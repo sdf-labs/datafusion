@@ -5785,8 +5785,7 @@ dependencies = [
 [[package]]
 name = "sqlparser"
 version = "0.61.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbf5ea8d4d7c808e1af1cbabebca9a2abe603bcefc22294c5b95018d53200cb7"
+source = "git+https://github.com/sdf-labs/datafusion-sqlparser-rs.git?rev=5a247c6fcf6fcdaa517f72716d3b43462f3bbe23#5a247c6fcf6fcdaa517f72716d3b43462f3bbe23"
 dependencies = [
  "log",
  "recursive",
@@ -5796,8 +5795,7 @@ dependencies = [
 [[package]]
 name = "sqlparser_derive"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6dd45d8fc1c79299bfbb7190e42ccbbdf6a5f52e4a6ad98d92357ea965bd289"
+source = "git+https://github.com/sdf-labs/datafusion-sqlparser-rs.git?rev=5a247c6fcf6fcdaa517f72716d3b43462f3bbe23#5a247c6fcf6fcdaa517f72716d3b43462f3bbe23"
 dependencies = [
  "proc-macro2",
  "quote",
