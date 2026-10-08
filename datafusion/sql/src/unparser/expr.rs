@@ -1932,11 +1932,11 @@ mod tests {
             ),
             (
                 when(col("a").is_null(), lit(true)).otherwise(lit(false))?,
-                r#"CASE WHEN a IS NULL THEN true ELSE false END"#,
+                r#"CASE WHEN (a) IS NULL THEN true ELSE false END"#,
             ),
             (
                 when(col("a").is_not_null(), lit(true)).otherwise(lit(false))?,
-                r#"CASE WHEN a IS NOT NULL THEN true ELSE false END"#,
+                r#"CASE WHEN (a) IS NOT NULL THEN true ELSE false END"#,
             ),
             (
                 Expr::Cast(Cast {
@@ -1985,13 +1985,13 @@ mod tests {
                 ScalarUDF::new_from_impl(DummyUDF::new())
                     .call(vec![col("a"), col("b")])
                     .is_null(),
-                r#"dummy_udf(a, b) IS NULL"#,
+                r#"(dummy_udf(a, b)) IS NULL"#,
             ),
             (
                 ScalarUDF::new_from_impl(DummyUDF::new())
                     .call(vec![col("a"), col("b")])
                     .is_not_null(),
-                r#"dummy_udf(a, b) IS NOT NULL"#,
+                r#"(dummy_udf(a, b)) IS NOT NULL"#,
             ),
             (
                 Expr::Like(Like {
@@ -2174,31 +2174,31 @@ mod tests {
                 }),
                 r#"count(*) FILTER (WHERE (a > 100)) OVER (ORDER BY a DESC NULLS FIRST RANGE BETWEEN 6 PRECEDING AND 2 FOLLOWING)"#,
             ),
-            (col("a").is_not_null(), r#"a IS NOT NULL"#),
-            (col("a").is_null(), r#"a IS NULL"#),
+            (col("a").is_not_null(), r#"(a) IS NOT NULL"#),
+            (col("a").is_null(), r#"(a) IS NULL"#),
             (
                 (col("a") + col("b")).gt(lit(4)).is_true(),
-                r#"((a + b) > 4) IS TRUE"#,
+                r#"(((a + b) > 4)) IS TRUE"#,
             ),
             (
                 (col("a") + col("b")).gt(lit(4)).is_not_true(),
-                r#"((a + b) > 4) IS NOT TRUE"#,
+                r#"(((a + b) > 4)) IS NOT TRUE"#,
             ),
             (
                 (col("a") + col("b")).gt(lit(4)).is_false(),
-                r#"((a + b) > 4) IS FALSE"#,
+                r#"(((a + b) > 4)) IS FALSE"#,
             ),
             (
                 (col("a") + col("b")).gt(lit(4)).is_not_false(),
-                r#"((a + b) > 4) IS NOT FALSE"#,
+                r#"(((a + b) > 4)) IS NOT FALSE"#,
             ),
             (
                 (col("a") + col("b")).gt(lit(4)).is_unknown(),
-                r#"((a + b) > 4) IS UNKNOWN"#,
+                r#"(((a + b) > 4)) IS UNKNOWN"#,
             ),
             (
                 (col("a") + col("b")).gt(lit(4)).is_not_unknown(),
-                r#"((a + b) > 4) IS NOT UNKNOWN"#,
+                r#"(((a + b) > 4)) IS NOT UNKNOWN"#,
             ),
             (not(col("a")), r#"NOT a"#),
             (
@@ -3252,7 +3252,7 @@ mod tests {
 
         let ast = unparser.expr_to_sql(&expr)?;
         let actual = format!("{ast}");
-        let expected = r#"a IS NOT NULL"#.to_string();
+        let expected = r#"(a) IS NOT NULL"#.to_string();
 
         assert_eq!(actual, expected);
 
@@ -3260,7 +3260,7 @@ mod tests {
 
         let ast = unparser.expr_to_sql(&expr)?;
         let actual = format!("{ast}");
-        let expected = r#"a IS NULL"#.to_string();
+        let expected = r#"(a) IS NULL"#.to_string();
 
         assert_eq!(actual, expected);
 
