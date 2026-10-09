@@ -18,7 +18,7 @@
 use crate::error::{_plan_err, Result};
 use arrow::{
     array::{Array, ArrayRef, StructArray, new_null_array},
-    compute::{CastOptions, cast_with_options},
+    compute::{CastOptions, can_cast_types, cast_with_options},
     datatypes::{DataType, DataType::Struct, Field, FieldRef},
 };
 use std::{collections::HashSet, sync::Arc};
@@ -55,13 +55,11 @@ fn cast_struct_column(
     target_fields: &[Arc<Field>],
     cast_options: &CastOptions,
 ) -> Result<ArrayRef> {
+    let target_type = Struct(target_fields.to_vec().into());
     if source_col.data_type() == &DataType::Null
         || (!source_col.is_empty() && source_col.null_count() == source_col.len())
     {
-        return Ok(new_null_array(
-            &Struct(target_fields.to_vec().into()),
-            source_col.len(),
-        ));
+        return Ok(new_null_array(&target_type, source_col.len()));
     }
 
     if let Some(source_struct) = source_col.as_any().downcast_ref::<StructArray>() {
@@ -99,6 +97,10 @@ fn cast_struct_column(
         let struct_array =
             StructArray::new(fields.into(), arrays, source_struct.nulls().cloned());
         Ok(Arc::new(struct_array))
+    } else if can_cast_types(source_col.data_type(), &target_type) {
+        // Not a struct, but Arrow knows how to produce one from it (e.g. a
+        // single-element FixedSizeList of a struct): defer to Arrow's cast.
+        Ok(cast_with_options(source_col, &target_type, cast_options)?)
     } else {
         // Return error if source is not a struct type
         _plan_err!(
@@ -289,10 +291,7 @@ fn validate_field_compatibility(
         }
         // For non-struct types, use the existing castability check
         _ => {
-            if !arrow::compute::can_cast_types(
-                source_field.data_type(),
-                target_field.data_type(),
-            ) {
+            if !can_cast_types(source_field.data_type(), target_field.data_type()) {
                 return _plan_err!(
                     "Cannot cast struct field '{}' from type {} to type {}",
                     target_field.name(),
@@ -446,6 +445,32 @@ mod tests {
         assert!(error_msg.contains("Cannot cast column of type"));
         assert!(error_msg.contains("to struct type"));
         assert!(error_msg.contains("Source must be a struct"));
+    }
+
+    #[test]
+    fn test_cast_single_element_fixed_size_list_to_struct() {
+        use arrow::array::{FixedSizeListArray, Int32Array};
+
+        let inner = struct_type(vec![field("a", DataType::Int32)]);
+        let values = Arc::new(StructArray::new(
+            vec![arc_field("a", DataType::Int32)].into(),
+            vec![Arc::new(Int32Array::from(vec![10, 20])) as ArrayRef],
+            None,
+        )) as ArrayRef;
+        let source = Arc::new(FixedSizeListArray::new(
+            Arc::new(Field::new("item", inner.clone(), true)),
+            1,
+            values,
+            None,
+        )) as ArrayRef;
+        let target_field = Field::new("s", inner.clone(), true);
+
+        let result = cast_column(&source, &target_field, &DEFAULT_CAST_OPTIONS).unwrap();
+        assert_eq!(result.data_type(), &inner);
+        let result = result.as_any().downcast_ref::<StructArray>().unwrap();
+        let a = result.column_by_name("a").unwrap();
+        let a = a.as_any().downcast_ref::<Int32Array>().unwrap();
+        assert_eq!(a.values(), &[10, 20]);
     }
 
     #[test]
