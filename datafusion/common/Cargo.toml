@@ -80,7 +80,15 @@ itertools = { workspace = true }
 libc = "0.2.180"
 log = { workspace = true }
 object_store = { workspace = true, optional = true }
-parquet = { workspace = true, optional = true, default-features = true }
+# parquet's default features minus brotli
+parquet = { workspace = true, optional = true, features = [
+    "base64",
+    "flate2-zlib-rs",
+    "lz4",
+    "simdutf8",
+    "snap",
+    "zstd",
+] }
 paste = { workspace = true }
 recursive = { workspace = true, optional = true }
 sqlparser = { workspace = true, optional = true }
